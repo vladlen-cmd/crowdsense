@@ -71,8 +71,24 @@ class YOLOv5TFLiteDetector:
         self._load_model()
 
     def _load_model(self):
+        tflite = None
+        # ai-edge-litert is Google's replacement for tflite-runtime (required on Pi 5 / Python 3.11+)
         try:
-            import tflite_runtime.interpreter as tflite
+            import ai_edge_litert.interpreter as tflite
+        except ImportError:
+            pass
+        if tflite is None:
+            try:
+                import tflite_runtime.interpreter as tflite
+            except ImportError:
+                pass
+        if tflite is None:
+            logger.warning(
+                "No TFLite runtime found. Install: pip install ai-edge-litert"
+            )
+            self._interpreter = None
+            return
+        try:
             self._interpreter = tflite.Interpreter(
                 model_path=str(self.model_path),
                 num_threads=4,
@@ -82,8 +98,8 @@ class YOLOv5TFLiteDetector:
             self._output_details = self._interpreter.get_output_details()
             logger.info(f"TFLite model loaded: {self.model_path}")
             logger.info(f"Input shape: {self._input_details[0]['shape']}")
-        except ImportError:
-            logger.warning("tflite_runtime not found. Install: pip install tflite-runtime")
+        except Exception as e:
+            logger.warning(f"Failed to load TFLite model: {e}")
             self._interpreter = None
 
     def _preprocess(self, frame: np.ndarray) -> np.ndarray:
