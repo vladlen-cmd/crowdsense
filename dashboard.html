@@ -19,412 +19,412 @@
       --red-hard:  #8b0000;
     }
 
-    body            { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
-    .card           { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
-    .card-header    { background: transparent; border-bottom: 1px solid var(--border); font-weight: 600; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-    .text-muted     { color: var(--muted) !important; }
-    hr              { border-color: var(--border); }
+    * { box-sizing: border-box; }
+    body         { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+    .card        { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+    .card-header { background: transparent; border-bottom: 1px solid var(--border); font-weight: 600; font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 10px 14px; }
+    .text-muted  { color: var(--muted) !important; }
 
-    .navbar         { background: var(--surface); border-bottom: 1px solid var(--border); }
-    .navbar-brand   { font-weight: 700; font-size: 1.2rem; letter-spacing: .02em; }
-    #live-dot       { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; animation: pulse 2s infinite; }
-    #live-dot.error { background: var(--red-soft); animation: none; }
-    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+    /* Navbar */
+    .navbar      { background: var(--surface); border-bottom: 1px solid var(--border); }
+    .navbar-brand{ font-weight: 700; font-size: 1.15rem; letter-spacing: .02em; }
+    #live-dot    { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; animation: pulse 2s infinite; }
+    #live-dot.off{ background: var(--red-soft); animation: none; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    #total-badge { font-size: .8rem; background: rgba(88,166,255,.12); color: #79c0ff; border-radius: 20px; padding: 2px 10px; }
 
-    .zone-card      { transition: box-shadow .2s; }
-    .zone-card:hover{ box-shadow: 0 0 0 1px var(--border), 0 4px 20px rgba(0,0,0,.4); }
-    .zone-name      { font-size: 1rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-    .zone-count     { font-size: 2.2rem; font-weight: 700; line-height: 1; }
-    .zone-capacity  { font-size: .85rem; color: var(--muted); }
+    /* Zone cards */
+    .zone-card   { transition: box-shadow .2s; }
+    .zone-card:hover { box-shadow: 0 0 0 1px var(--border), 0 4px 20px rgba(0,0,0,.45); }
+    .zone-name   { font-size: .95rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .zone-count  { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+    .zone-cap    { font-size: .82rem; color: var(--muted); }
 
-    .status-badge   { font-size: .7rem; font-weight: 700; letter-spacing: .08em; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; }
-    .badge-OPEN      { background: rgba(46,160,67,.18);  color: #3fb950; }
-    .badge-MODERATE  { background: rgba(210,153,34,.18); color: #e3b341; }
-    .badge-NEAR_FULL { background: rgba(218,54,51,.18);  color: #f85149; }
-    .badge-FULL      { background: rgba(139,0,0,.35);    color: #ffa198; }
+    .sbadge      { font-size: .68rem; font-weight: 700; letter-spacing: .08em; padding: 3px 8px; border-radius: 20px; text-transform: uppercase; }
+    .s-OPEN       { background: rgba(46,160,67,.15);  color: #3fb950; }
+    .s-MODERATE   { background: rgba(210,153,34,.18); color: #e3b341; }
+    .s-NEAR_FULL  { background: rgba(218,54,51,.18);  color: #f85149; }
+    .s-FULL       { background: rgba(139,0,0,.35);    color: #ffa198; }
 
-    .occ-bar-wrap   { background: #21262d; border-radius: 4px; height: 8px; overflow: hidden; }
-    .occ-bar-fill   { height: 100%; border-radius: 4px; transition: width .5s ease; }
-    .fill-OPEN       { background: var(--green); }
-    .fill-MODERATE   { background: var(--orange); }
-    .fill-NEAR_FULL  { background: var(--red-soft); }
-    .fill-FULL       { background: var(--red-hard); box-shadow: 0 0 6px rgba(139,0,0,.6); }
+    .bar-wrap    { background: #21262d; border-radius: 4px; height: 7px; overflow: hidden; }
+    .bar-fill    { height: 100%; border-radius: 4px; transition: width .5s ease; }
+    .b-OPEN       { background: var(--green); }
+    .b-MODERATE   { background: var(--orange); }
+    .b-NEAR_FULL  { background: var(--red-soft); }
+    .b-FULL       { background: var(--red-hard); box-shadow: 0 0 6px rgba(139,0,0,.5); }
 
-    .viol-pill      { font-size: .75rem; padding: 2px 8px; border-radius: 12px; background: rgba(218,54,51,.15); color: #f85149; }
-    .viol-pill.none { background: rgba(46,160,67,.12);  color: #3fb950; }
+    .vpill       { font-size: .72rem; padding: 2px 7px; border-radius: 12px; }
+    .vpill.bad   { background: rgba(218,54,51,.15); color: #f85149; }
+    .vpill.ok    { background: rgba(46,160,67,.12);  color: #3fb950; }
 
-    .forecast-wrap  { height: 90px; }
+    .fc-wrap     { height: 72px; }
 
-    .alert-row      { border-left: 3px solid transparent; padding: 8px 10px; margin-bottom: 4px; border-radius: 4px; background: rgba(255,255,255,.03); font-size: .82rem; }
-    .alert-row.warn  { border-color: var(--orange); }
-    .alert-row.danger{ border-color: var(--red-soft); }
-    .alert-row.info  { border-color: #58a6ff; }
-    .alert-time     { color: var(--muted); font-size: .75rem; float: right; }
-    .no-alerts      { color: var(--muted); font-size: .85rem; text-align: center; padding: 18px 0; }
+    /* Zone feed tabs */
+    .feed-tabs   { border-bottom: 1px solid var(--border); padding: 0 14px; gap: 4px; display: flex; flex-wrap: wrap; }
+    .feed-tab    { font-size: .78rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 8px 14px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; background: none; border-top: none; border-left: none; border-right: none; }
+    .feed-tab:hover  { color: var(--text); }
+    .feed-tab.active { color: var(--text); border-bottom-color: #58a6ff; }
+    .feed-pane   { display: none; }
+    .feed-pane.active { display: flex; gap: 12px; flex-wrap: wrap; padding: 14px; }
 
-    .heatmap-img    { width: 100%; border-radius: 6px; border: 1px solid var(--border); min-height: 120px; background: #21262d; display: block; object-fit: cover; }
-    .heatmap-none   { width: 100%; min-height: 120px; background: #21262d; border-radius: 6px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.8rem; border: 1px solid var(--border); }
+    /* Live stream */
+    .stream-wrap { position: relative; flex: 1 1 300px; min-width: 0; }
+    .stream-label{ position: absolute; top: 8px; left: 8px; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: rgba(0,0,0,.6); color: #e6edf3; padding: 2px 8px; border-radius: 4px; z-index: 2; }
+    .stream-badge{ position: absolute; top: 8px; right: 8px; font-size: .65rem; font-weight: 700; background: #da3633; color: #fff; padding: 2px 6px; border-radius: 4px; z-index: 2; animation: pulse 1.5s infinite; }
+    .stream-img  { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; background: #21262d; min-height: 160px; object-fit: cover; }
+    .stream-img.offline { filter: grayscale(1) opacity(.4); }
 
-    #refresh-info   { font-size: .78rem; color: var(--muted); }
-    #countdown      { font-weight: 600; color: var(--text); }
+    /* Heatmap */
+    .heatmap-wrap{ flex: 1 1 200px; min-width: 0; }
+    .heatmap-img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; min-height: 160px; object-fit: cover; background: #21262d; }
+    .heatmap-none{ width: 100%; min-height: 160px; background: #21262d; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: .78rem; border: 1px solid var(--border); }
+
+    /* Alert rows */
+    .arow        { border-left: 3px solid transparent; padding: 7px 10px; margin-bottom: 4px; border-radius: 4px; background: rgba(255,255,255,.03); font-size: .8rem; }
+    .arow.warn   { border-color: var(--orange); }
+    .arow.danger { border-color: var(--red-soft); }
+    .arow.info   { border-color: #58a6ff; }
+    .atime       { color: var(--muted); font-size: .72rem; float: right; }
+    .no-alerts   { color: var(--muted); font-size: .82rem; text-align: center; padding: 18px 0; }
+
+    #refresh-info{ font-size: .75rem; color: var(--muted); }
+    #countdown   { font-weight: 600; color: var(--text); }
+
+    select.dark  { background: var(--surface); color: var(--text); border-color: var(--border); font-size: .78rem; }
   </style>
 </head>
 <body>
 
-<nav class="navbar navbar-dark px-3 py-2 mb-4">
-  <span class="navbar-brand">
-    <span id="live-dot"></span>CrowdSense
-  </span>
+<!-- Navbar -->
+<nav class="navbar navbar-dark px-3 py-2 mb-3">
+  <span class="navbar-brand"><span id="live-dot"></span>CrowdSense</span>
+  <span id="total-badge">— people total</span>
   <span id="refresh-info">Refreshing in <span id="countdown">5</span>s</span>
 </nav>
 
-<div class="container-fluid px-4">
+<div class="container-fluid px-3">
 
-  <div class="row g-3 mb-4" id="zone-cards">
-    <div class="col-12 text-center text-muted py-5">Loading zones…</div>
+  <!-- ── Zone summary cards ── -->
+  <div class="row g-3 mb-3" id="zone-cards">
+    <div class="col-12 text-center text-muted py-5">Connecting to API…</div>
   </div>
 
-  <div class="row g-3 mb-4">
+  <!-- ── Live feeds + heatmaps ── -->
+  <div class="card mb-3">
+    <div class="d-flex align-items-center justify-content-between pe-3">
+      <div class="feed-tabs" id="feed-tabs"><!-- tabs injected --></div>
+      <span style="font-size:.72rem;color:var(--muted)">Live &amp; heatmap</span>
+    </div>
+    <div id="feed-panes"><!-- panes injected --></div>
+  </div>
+
+  <!-- ── History + Alerts ── -->
+  <div class="row g-3 mb-3">
     <div class="col-lg-8">
       <div class="card h-100">
         <div class="card-header d-flex justify-content-between align-items-center">
           Occupancy History
-          <select id="history-minutes" class="form-select form-select-sm w-auto bg-dark text-light border-secondary">
-            <option value="30">Last 30 min</option>
-            <option value="60" selected>Last 60 min</option>
-            <option value="120">Last 2 h</option>
-            <option value="360">Last 6 h</option>
+          <select id="history-minutes" class="form-select dark w-auto">
+            <option value="30">30 min</option>
+            <option value="60" selected>1 h</option>
+            <option value="120">2 h</option>
+            <option value="360">6 h</option>
           </select>
         </div>
-        <div class="card-body">
-          <canvas id="history-chart" height="100"></canvas>
-        </div>
+        <div class="card-body"><canvas id="history-chart" height="90"></canvas></div>
       </div>
     </div>
     <div class="col-lg-4">
       <div class="card h-100">
         <div class="card-header d-flex justify-content-between align-items-center">
-          Active Alerts
-          <span id="alert-count" class="badge bg-secondary">0</span>
+          Active Alerts <span id="alert-count" class="badge bg-secondary">0</span>
         </div>
-        <div class="card-body overflow-auto" style="max-height:280px" id="alert-list">
-          <div class="no-alerts">No active alerts</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="row g-3 mb-5">
-    <div class="col-lg-8">
-      <div class="card">
-        <div class="card-header">Live Heatmaps</div>
-        <div class="card-body">
-          <div class="row g-3" id="heatmap-grid">
-            <div class="col-12 text-center text-muted py-3">Loading…</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col-lg-4">
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          Alert History
-          <select id="alert-zone-filter" class="form-select form-select-sm w-auto bg-dark text-light border-secondary">
-            <option value="">All zones</option>
-          </select>
-        </div>
-        <div class="card-body overflow-auto" style="max-height:280px" id="alert-history-list">
-          <div class="no-alerts">No history yet</div>
+        <div class="card-body overflow-auto" style="max-height:260px" id="alert-list">
+          <div class="no-alerts">All clear</div>
         </div>
       </div>
     </div>
   </div>
 
-</div>
+  <!-- ── Alert history ── -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      Alert History
+      <select id="alert-zone-filter" class="form-select dark w-auto">
+        <option value="">All zones</option>
+      </select>
+    </div>
+    <div class="card-body overflow-auto" style="max-height:220px" id="alert-history-list">
+      <div class="no-alerts">No history yet</div>
+    </div>
+  </div>
+
+</div><!-- /container -->
 
 <script>
-const API = '';   // same origin — Flask serves both the dashboard and the API
-const REFRESH_INTERVAL = 5000;
-const ZONE_COLORS = ['#58a6ff','#3fb950','#e3b341','#f85149','#d2a8ff','#79c0ff'];
+const REFRESH  = 5000;
+const COLORS   = ['#58a6ff','#3fb950','#e3b341','#f85149','#d2a8ff','#79c0ff'];
 
-let historyChart = null;
-let forecastCharts = {};
-let countdown = REFRESH_INTERVAL / 1000;
-let knownZones = [];
+let historyChart  = null;
+let forecastCharts= {};
+let knownZones    = [];
+let activeTab     = null;
+let countdown     = REFRESH / 1000;
 
-function fmtTime(ts) {
-  const d = new Date(ts * 1000);
-  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-}
+// ── Utilities ────────────────────────────────────────────────────────────────
 
-function fmtAgo(ts) {
-  const secs = Math.floor(Date.now()/1000 - ts);
-  if (secs < 60)  return `${secs}s ago`;
-  if (secs < 3600) return `${Math.floor(secs/60)}m ago`;
-  return `${Math.floor(secs/3600)}h ago`;
-}
+const fmt  = ts => new Date(ts*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+const ago  = ts => { const s=Math.floor(Date.now()/1000-ts); return s<60?`${s}s ago`:s<3600?`${Math.floor(s/60)}m ago`:`${Math.floor(s/3600)}h ago`; };
+const json = url => fetch(url).then(r => { if(!r.ok) throw r.status; return r.json(); });
 
-async function fetchJSON(url) {
-  const r = await fetch(API + url);
-  if (!r.ok) throw new Error(r.status);
-  return r.json();
-}
+// ── Zone summary cards ────────────────────────────────────────────────────────
 
-function buildZoneCard(zone, idx) {
-  const status    = zone.status || 'OPEN';
-  const occupancy = zone.occupancy || 0;
-  const violations = zone.violations || 0;
-  const color     = ZONE_COLORS[idx % ZONE_COLORS.length];
-
+function cardHTML(z, idx) {
+  const st  = z.status || 'OPEN';
+  const occ = z.occupancy || 0;
+  const vio = z.violations || 0;
+  const col = COLORS[idx % COLORS.length];
   return `
   <div class="col-sm-6 col-xl-4">
-    <div class="card zone-card p-3" id="card-${zone.zone}">
-      <div class="d-flex justify-content-between align-items-start mb-2">
-        <span class="zone-name" style="color:${color}">${zone.zone}</span>
-        <span class="status-badge badge-${status}">${status.replace('_',' ')}</span>
+    <div class="card zone-card p-3" id="zcard-${z.zone}">
+      <div class="d-flex justify-content-between align-items-start mb-1">
+        <span class="zone-name" style="color:${col}">${z.zone}</span>
+        <span class="sbadge s-${st}">${st.replace('_',' ')}</span>
       </div>
-      <div class="zone-count">${zone.count ?? '—'}<span class="zone-capacity"> / ${zone.capacity ?? '—'}</span></div>
-      <div class="text-muted mb-2" style="font-size:.78rem">people</div>
-
-      <div class="occ-bar-wrap mb-1">
-        <div class="occ-bar-fill fill-${status}" style="width:${Math.min(occupancy,100)}%"></div>
+      <div class="zone-count">${z.count??'—'}<span class="zone-cap"> / ${z.capacity??'—'}</span></div>
+      <div class="text-muted mb-2" style="font-size:.75rem">people</div>
+      <div class="bar-wrap mb-1"><div class="bar-fill b-${st}" style="width:${Math.min(occ,100)}%"></div></div>
+      <div class="d-flex justify-content-between mb-2" style="font-size:.74rem">
+        <span class="text-muted">${occ.toFixed(1)}% occupied</span>
+        <span class="vpill ${vio?'bad':'ok'}">${vio} violation${vio!==1?'s':''}</span>
       </div>
-      <div class="d-flex justify-content-between mb-3" style="font-size:.78rem">
-        <span style="color:var(--muted)">${occupancy.toFixed(1)}% occupied</span>
-        <span class="viol-pill ${violations===0?'none':''}">${violations} violation${violations!==1?'s':''}</span>
-      </div>
-
-      <div style="font-size:.75rem; color:var(--muted)" class="mb-1">60-min forecast</div>
-      <div class="forecast-wrap"><canvas id="fc-${zone.zone}"></canvas></div>
-
-      <div class="mt-2 text-muted" style="font-size:.72rem">${zone.fps ?? '—'} fps</div>
+      <div style="font-size:.72rem;color:var(--muted)" class="mb-1">60-min forecast</div>
+      <div class="fc-wrap"><canvas id="fc-${z.zone}"></canvas></div>
+      <div class="mt-2 text-muted" style="font-size:.7rem" id="fps-${z.zone}">${z.fps??'—'} fps · ${z.latency_ms??'—'} ms</div>
     </div>
   </div>`;
 }
 
-function updateZoneCard(zone) {
-  const card = document.getElementById(`card-${zone.zone}`);
+function updateCard(z) {
+  const card = document.getElementById(`zcard-${z.zone}`);
   if (!card) return;
-  const status    = zone.status || 'OPEN';
-  const occupancy = zone.occupancy || 0;
-  const violations = zone.violations || 0;
+  const st  = z.status || 'OPEN';
+  const occ = z.occupancy || 0;
+  const vio = z.violations || 0;
 
-  card.querySelector('.status-badge').className = `status-badge badge-${status}`;
-  card.querySelector('.status-badge').textContent = status.replace('_',' ');
-  card.querySelector('.zone-count').innerHTML =
-    `${zone.count ?? '—'}<span class="zone-capacity"> / ${zone.capacity ?? '—'}</span>`;
-  const fill = card.querySelector('.occ-bar-fill');
-  fill.className = `occ-bar-fill fill-${status}`;
-  fill.style.width = `${Math.min(occupancy,100)}%`;
+  card.querySelector('.sbadge').className = `sbadge s-${st}`;
+  card.querySelector('.sbadge').textContent = st.replace('_',' ');
+  card.querySelector('.zone-count').innerHTML = `${z.count??'—'}<span class="zone-cap"> / ${z.capacity??'—'}</span>`;
 
-  const [occSpan, violPill] = card.querySelectorAll('.d-flex.justify-content-between.mb-3 span');
-  occSpan.textContent = `${occupancy.toFixed(1)}% occupied`;
-  violPill.className  = `viol-pill ${violations===0?'none':''}`;
-  violPill.textContent = `${violations} violation${violations!==1?'s':''}`;
-  card.querySelector('.text-muted:last-child').textContent = `${zone.fps ?? '—'} fps`;
+  const fill = card.querySelector('.bar-fill');
+  fill.className = `bar-fill b-${st}`;
+  fill.style.width = `${Math.min(occ,100)}%`;
+
+  const [occSpan, vPill] = card.querySelectorAll('.d-flex.justify-content-between.mb-2 span');
+  occSpan.textContent = `${occ.toFixed(1)}% occupied`;
+  vPill.className = `vpill ${vio?'bad':'ok'}`;
+  vPill.textContent = `${vio} violation${vio!==1?'s':''}`;
+
+  document.getElementById(`fps-${z.zone}`).textContent = `${z.fps??'—'} fps · ${z.latency_ms??'—'} ms`;
+
+  const badge = document.getElementById(`sbadge-${z.zone}`);
+  if (badge) { badge.textContent = st.replace('_',' '); badge.style.background = {OPEN:'#2ea043',MODERATE:'#d29922',NEAR_FULL:'#da3633',FULL:'#8b0000'}[st]||'#da3633'; }
+}
+
+function buildFeedPanes(zones) {
+  const tabsEl  = document.getElementById('feed-tabs');
+  const panesEl = document.getElementById('feed-panes');
+  tabsEl.innerHTML  = '';
+  panesEl.innerHTML = '';
+
+  zones.forEach((z, i) => {
+    const col = COLORS[i % COLORS.length];
+
+    const btn = document.createElement('button');
+    btn.className = `feed-tab${i===0?' active':''}`;
+    btn.textContent = z.zone;
+    btn.style.color = i===0 ? col : '';
+    btn.dataset.zone = z.zone;
+    btn.dataset.color = col;
+    btn.onclick = () => switchTab(z.zone);
+    tabsEl.appendChild(btn);
+
+    const pane = document.createElement('div');
+    pane.className = `feed-pane${i===0?' active':''}`;
+    pane.id = `pane-${z.zone}`;
+    pane.innerHTML = `
+      <div class="stream-wrap">
+        <span class="stream-label">${z.zone}</span>
+        <span class="stream-badge" id="sbadge-${z.zone}">LIVE</span>
+        <img class="stream-img" id="stream-${z.zone}"
+             src="/api/zones/${z.zone}/stream"
+             alt="${z.zone} live feed"
+             onerror="this.classList.add('offline');document.getElementById('sbadge-${z.zone}').textContent='OFFLINE';document.getElementById('sbadge-${z.zone}').style.background='#555'">
+      </div>
+      <div class="heatmap-wrap">
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase">Density Heatmap</div>
+        <div id="hm-wrap-${z.zone}"><div class="heatmap-none">Waiting for heatmap…</div></div>
+      </div>`;
+    panesEl.appendChild(pane);
+  });
+
+  activeTab = zones[0]?.zone;
+}
+
+function switchTab(zone) {
+  activeTab = zone;
+  document.querySelectorAll('.feed-tab').forEach(b => {
+    const active = b.dataset.zone === zone;
+    b.classList.toggle('active', active);
+    b.style.color = active ? b.dataset.color : '';
+  });
+  document.querySelectorAll('.feed-pane').forEach(p =>
+    p.classList.toggle('active', p.id === `pane-${zone}`)
+  );
+}
+
+async function refreshHeatmaps() {
+  for (const zone of knownZones) {
+    try {
+      const data = await json(`/api/zones/${zone}/heatmap.b64`);
+      const wrap = document.getElementById(`hm-wrap-${zone}`);
+      if (wrap && data.image) {
+        let img = wrap.querySelector('img');
+        if (!img) {
+          wrap.innerHTML = `<img class="heatmap-img" alt="${zone} heatmap">`;
+          img = wrap.querySelector('img');
+        }
+        img.src = data.image;
+      }
+    } catch { /* not available yet */ }
+  }
+}
+
+async function refreshForecast(zone, color) {
+  try {
+    const data = await json(`/api/zones/${zone}/forecast`);
+    const fc   = data.forecast || [];
+    if (!fc.length) return;
+    const canvas = document.getElementById(`fc-${zone}`);
+    if (!canvas) return;
+    if (forecastCharts[zone]) forecastCharts[zone].destroy();
+    forecastCharts[zone] = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: fc.map(p=>`+${p.minutes_ahead}m`),
+        datasets: [{ data: fc.map(p=>p.occupancy_pct), borderColor: color,
+          backgroundColor: color+'22', fill:true, tension:.4, pointRadius:0, borderWidth:1.5 }],
+      },
+      options: { responsive:true, animation:false,
+        plugins:{ legend:{display:false}, tooltip:{enabled:false} },
+        scales:{ x:{display:false}, y:{min:0,max:100,display:false} } },
+    });
+  } catch { /* no forecast yet */ }
 }
 
 function initHistoryChart() {
-  const ctx = document.getElementById('history-chart').getContext('2d');
-  historyChart = new Chart(ctx, {
-    type: 'line',
-    data: { labels: [], datasets: [] },
-    options: {
-      responsive: true,
-      animation: false,
-      interaction: { mode: 'index', intersect: false },
-      scales: {
-        x: { ticks: { color:'#8b949e', maxTicksLimit:8 }, grid: { color:'#21262d' } },
-        y: { min:0, max:100, ticks: { color:'#8b949e', callback: v => v+'%' }, grid: { color:'#21262d' } },
+  historyChart = new Chart(
+    document.getElementById('history-chart').getContext('2d'), {
+      type: 'line',
+      data: { labels:[], datasets:[] },
+      options: {
+        responsive:true, animation:false,
+        interaction:{ mode:'index', intersect:false },
+        scales: {
+          x: { ticks:{color:'#8b949e',maxTicksLimit:8}, grid:{color:'#21262d'} },
+          y: { min:0, max:100, ticks:{color:'#8b949e',callback:v=>v+'%'}, grid:{color:'#21262d'} },
+        },
+        plugins: {
+          legend:{ labels:{color:'#e6edf3'} },
+          tooltip:{ callbacks:{ label:c=>` ${c.dataset.label}: ${c.parsed.y.toFixed(1)}%` } },
+        },
       },
-      plugins: {
-        legend: { labels: { color:'#e6edf3' } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%` } },
-      },
-    },
-  });
+    }
+  );
 }
 
 async function refreshHistory() {
-  const minutes = document.getElementById('history-minutes').value;
+  const mins = document.getElementById('history-minutes').value;
   try {
-    const data = await fetchJSON(`/api/metrics/history?minutes=${minutes}`);
-    const datasets = [];
-    knownZones.forEach((zone, idx) => {
-      const entries = (data[zone] || []);
-      datasets.push({
+    const data = await json(`/api/metrics/history?minutes=${mins}`);
+    const sets = knownZones.map((zone, i) => {
+      const entries = data[zone] || [];
+      return {
         label: zone,
-        data: entries.map(e => ({ x: fmtTime(e.t), y: e.occupancy })),
-        borderColor: ZONE_COLORS[idx % ZONE_COLORS.length],
+        data: entries.map(e => e.occupancy),
+        borderColor: COLORS[i % COLORS.length],
         backgroundColor: 'transparent',
-        tension: 0.3,
-        pointRadius: 0,
-        borderWidth: 2,
-      });
+        tension: 0.3, pointRadius: 0, borderWidth: 2,
+      };
     });
-    if (datasets.length > 0) {
-      historyChart.data.labels   = datasets[0].data.map(p => p.x);
-      historyChart.data.datasets = datasets.map(ds => ({...ds, data: ds.data.map(p => p.y)}));
-      historyChart.update('none');
-    }
-  } catch(e) { console.warn('History fetch failed', e); }
-}
-
-async function refreshForecast(zoneName, color) {
-  try {
-    const data = await fetchJSON(`/api/zones/${zoneName}/forecast`);
-    const fc = data.forecast || [];
-    if (!fc.length) return;
-
-    const canvasId = `fc-${zoneName}`;
-    const canvas   = document.getElementById(canvasId);
-    if (!canvas) return;
-
-    if (forecastCharts[zoneName]) {
-      forecastCharts[zoneName].destroy();
-    }
-    forecastCharts[zoneName] = new Chart(canvas.getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: fc.map(p => `+${p.minutes_ahead}m`),
-        datasets: [{
-          data: fc.map(p => p.occupancy_pct),
-          borderColor: color,
-          backgroundColor: color + '22',
-          fill: true,
-          tension: 0.4,
-          pointRadius: 0,
-          borderWidth: 1.5,
-        }],
-      },
-      options: {
-        responsive: true,
-        animation: false,
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        scales: {
-          x: { display: false },
-          y: { min:0, max:100, display: false },
-        },
-      },
-    });
-  } catch(e) { /* no forecast data yet */ }
+    const labels = (data[knownZones[0]] || []).map(e => fmt(e.t));
+    historyChart.data.labels   = labels;
+    historyChart.data.datasets = sets;
+    historyChart.update('none');
+  } catch(e) { console.warn('History failed', e); }
 }
 
 async function refreshAlerts() {
   try {
-    const data = await fetchJSON('/api/alerts');
+    const data   = await json('/api/alerts');
     const alerts = data.alerts || [];
-    const list   = document.getElementById('alert-list');
     const badge  = document.getElementById('alert-count');
     badge.textContent = alerts.length;
-    badge.className   = `badge ${alerts.length ? 'bg-danger' : 'bg-secondary'}`;
-
-    if (!alerts.length) {
-      list.innerHTML = '<div class="no-alerts">All zones are clear</div>';
-      return;
-    }
-    list.innerHTML = alerts.map(a => `
-      <div class="alert-row ${a.level}">
-        <strong>${a.zone}</strong> — ${a.message}
-        <span class="alert-time">${fmtAgo(a.ts)}</span>
-      </div>`).join('');
-  } catch(e) { console.warn('Alerts fetch failed', e); }
+    badge.className   = `badge ${alerts.length?'bg-danger':'bg-secondary'}`;
+    document.getElementById('alert-list').innerHTML = alerts.length
+      ? alerts.map(a=>`<div class="arow ${a.level}"><strong>${a.zone}</strong> — ${a.message}<span class="atime">${ago(a.ts)}</span></div>`).join('')
+      : '<div class="no-alerts">All zones are clear</div>';
+  } catch {}
 }
 
 async function refreshAlertHistory() {
-  const zone  = document.getElementById('alert-zone-filter').value;
-  const url   = `/api/alerts/history?limit=30${zone ? '&zone='+zone : ''}`;
+  const zone = document.getElementById('alert-zone-filter').value;
   try {
-    const data = await fetchJSON(url);
-    const list = document.getElementById('alert-history-list');
-    const alerts = (data.alerts || []).slice().reverse();
-    if (!alerts.length) {
-      list.innerHTML = '<div class="no-alerts">No history yet</div>';
-      return;
-    }
-    list.innerHTML = alerts.map(a => `
-      <div class="alert-row ${a.level}">
-        <strong>${a.zone}</strong> — ${a.message}
-        <span class="alert-time">${fmtAgo(a.timestamp)}</span>
-      </div>`).join('');
-  } catch(e) { console.warn('Alert history fetch failed', e); }
-}
-
-async function refreshHeatmaps() {
-  const grid = document.getElementById('heatmap-grid');
-  if (!knownZones.length) return;
-
-  if (grid.querySelector('.col-12.text-center')) {
-    grid.innerHTML = knownZones.map(z => `
-      <div class="col-md-4">
-        <div style="font-size:.78rem; color:var(--muted); margin-bottom:4px; text-transform:uppercase; font-weight:600">${z}</div>
-        <div id="hm-wrap-${z}"><div class="heatmap-none">No heatmap yet</div></div>
-      </div>`).join('');
-  }
-
-  for (const zone of knownZones) {
-    try {
-      const data = await fetchJSON(`/api/zones/${zone}/heatmap.b64`);
-      const wrap = document.getElementById(`hm-wrap-${zone}`);
-      if (wrap && data.image) {
-        wrap.innerHTML = `<img class="heatmap-img" src="${data.image}" alt="${zone} heatmap">`;
-      }
-    } catch(e) { /* heatmap not available yet */ }
-  }
+    const data   = await json(`/api/alerts/history?limit=40${zone?'&zone='+zone:''}`);
+    const alerts = (data.alerts||[]).slice().reverse();
+    document.getElementById('alert-history-list').innerHTML = alerts.length
+      ? alerts.map(a=>`<div class="arow ${a.level}"><strong>${a.zone}</strong> — ${a.message}<span class="atime">${ago(a.timestamp)}</span></div>`).join('')
+      : '<div class="no-alerts">No history yet</div>';
+  } catch {}
 }
 
 async function refreshAll() {
   const dot = document.getElementById('live-dot');
   try {
-    const data = await fetchJSON('/api/zones');
-    dot.classList.remove('error');
+    const data  = await json('/api/zones');
+    const zones = data.zones || [];
+    dot.classList.remove('off');
 
-    const zones = Object.values(data.zones || {});
-    const isFirstLoad = knownZones.length === 0;
+    document.getElementById('total-badge').textContent = `${data.total_people??'—'} people total`;
 
-    if (isFirstLoad) {
+    if (knownZones.length === 0) {
       knownZones = zones.map(z => z.zone);
 
-      const filter = document.getElementById('alert-zone-filter');
-      knownZones.forEach(z => {
-        const opt = document.createElement('option');
-        opt.value = z; opt.textContent = z;
-        filter.appendChild(opt);
-      });
-
-      document.getElementById('zone-cards').innerHTML =
-        zones.map((z, i) => buildZoneCard(z, i)).join('');
-
+      document.getElementById('zone-cards').innerHTML = zones.map((z,i) => cardHTML(z,i)).join('');
+      buildFeedPanes(zones);
       initHistoryChart();
+
+      const sel = document.getElementById('alert-zone-filter');
+      knownZones.forEach(z => { const o=document.createElement('option'); o.value=z; o.textContent=z; sel.appendChild(o); });
     } else {
-      zones.forEach(z => updateZoneCard(z));
+      zones.forEach(z => updateCard(z));
     }
 
-    zones.forEach((z, i) => refreshForecast(z.zone, ZONE_COLORS[i % ZONE_COLORS.length]));
-
-    await Promise.all([
-      refreshHistory(),
-      refreshAlerts(),
-      refreshAlertHistory(),
-      refreshHeatmaps(),
-    ]);
+    zones.forEach((z,i) => refreshForecast(z.zone, COLORS[i%COLORS.length]));
+    await Promise.all([refreshHistory(), refreshAlerts(), refreshAlertHistory(), refreshHeatmaps()]);
 
   } catch(e) {
-    dot.classList.add('error');
+    dot.classList.add('off');
     console.warn('API unreachable', e);
   }
 }
 
 function startCountdown() {
-  countdown = REFRESH_INTERVAL / 1000;
+  countdown = REFRESH / 1000;
   const el  = document.getElementById('countdown');
-  const tick = setInterval(() => {
-    countdown--;
-    el.textContent = countdown;
-    if (countdown <= 0) {
-      clearInterval(tick);
-      refreshAll().then(startCountdown);
-    }
+  const t   = setInterval(() => {
+    el.textContent = --countdown;
+    if (countdown <= 0) { clearInterval(t); refreshAll().then(startCountdown); }
   }, 1000);
 }
 

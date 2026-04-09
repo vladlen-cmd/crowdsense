@@ -14,6 +14,7 @@ from heatmap   import HeatmapAccumulator, ZoneHeatmapManager
 from capacity  import CapacityManager, SignageController, ZoneConfig, CapacityStatus
 from predictor import CrowdPredictor
 from alerts    import AlertManager
+import api_server
 
 logging.basicConfig(
     level=logging.INFO,
@@ -156,13 +157,17 @@ class ZoneProcessor:
             self.predictor.push_observation(result.count)
             self._last_prediction_push = now
 
+        annotated = self._annotate_frame(frame, result, snapshot)
+
         if self.show_display:
-            annotated = self._annotate_frame(frame, result, snapshot)
             cv2.imshow(f'CrowdSense — {self.config.name}', annotated)
+
+        api_server.update_frame(self.config.name, annotated)
+        api_server.update_heatmap(self.config.name, self.heatmap.get_colored_heatmap())
 
         self._frame_count += 1
 
-        return {
+        metrics = {
             'zone':       self.config.name,
             'count':      result.count,
             'capacity':   self.config.max_capacity,
@@ -172,6 +177,8 @@ class ZoneProcessor:
             'fps':        round(result.fps, 1),
             'latency_ms': round(result.latency_ms, 1),
         }
+        api_server.update_zone_data(self.config.name, metrics)
+        return metrics
 
     def _annotate_frame(self, frame, result: FrameResult, snapshot) -> np.ndarray:
         annotated = self.heatmap.overlay_on_frame(frame)
@@ -277,17 +284,15 @@ class CrowdSenseApp:
 
     def run(self):
         logger.info(f'Starting CrowdSense for zones: {self.zone_names}')
+
+        api_server.run_in_thread()
+
         for cam in self.cameras.values():
             cam.start()
 
         time.sleep(2.0)
         self._running = True
         frame_count   = 0
-        try:
-            from api_server import update_heatmap as _push_heatmap
-            _heatmap_push_available = True
-        except Exception:
-            _heatmap_push_available = False
 
         try:
             while self._running:
@@ -303,11 +308,6 @@ class CrowdSenseApp:
 
                     if frame_count % 30 == 0:
                         logger.info(json.dumps(metrics))
-
-                        if _heatmap_push_available:
-                            hm_frame = self.processors[zone_name].get_heatmap_frame()
-                            if hm_frame is not None:
-                                _push_heatmap(zone_name, hm_frame)
 
                         warning = self.processors[zone_name].get_peak_warning()
                         if warning:
@@ -341,7 +341,6 @@ class CrowdSenseApp:
         with open(log_path, 'w') as f:
             json.dump(self._metrics_log[-1000:], f, indent=2)
         logger.info(f'Metrics saved → {log_path}')
-
 
 def main():
     parser = argparse.ArgumentParser(description='CrowdSense — Crowd Density Monitor')
