@@ -13,6 +13,7 @@ from detector  import YOLOv5TFLiteDetector, FrameResult
 from heatmap   import HeatmapAccumulator, ZoneHeatmapManager
 from capacity  import CapacityManager, SignageController, ZoneConfig, CapacityStatus
 from predictor import CrowdPredictor
+from alerts    import AlertManager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,24 +21,60 @@ logging.basicConfig(
 )
 logger = logging.getLogger('crowdsense.main')
 
-ZONE_CONFIGS = {
-    'cafeteria': ZoneConfig(name='cafeteria',   max_capacity=92,  camera_id=0),
-    'library':   ZoneConfig(name='library',     max_capacity=60,  camera_id=1),
-    'auditorium':ZoneConfig(name='auditorium',  max_capacity=100, camera_id=2),
-}
+def load_config(path: str = "config.yaml") -> dict:
+    defaults = {
+        "zones": {
+            "cafeteria":  {"max_capacity": 92,  "camera_id": 0},
+            "library":    {"max_capacity": 60,  "camera_id": 1},
+            "auditorium": {"max_capacity": 100, "camera_id": 2},
+        },
+        "camera":    {"resolution": [640, 480]},
+        "detection": {
+            "model_path": "models/yolov5n-int8.tflite",
+            "input_size": 320,
+            "conf_threshold": 0.45,
+            "min_distance_px": 50,
+        },
+        "signage": {
+            "mode": "opencv",
+            "mqtt_host": "localhost",
+            "mqtt_port": 1883,
+            "http_url": "http://localhost:5000",
+        },
+        "alerts": {
+            "cooldown_minutes": 5,
+            "email": {"enabled": False},
+            "ntfy":  {"enabled": False},
+        },
+    }
 
-CAMERA_RESOLUTION = (640, 480)
-DETECTION_MODEL   = 'models/yolov5n-int8.tflite'
-SIGNAGE_MODE      = 'opencv'
+    cfg_path = Path(path)
+    if not cfg_path.exists():
+        logger.warning(f"config.yaml not found — using built-in defaults.")
+        return defaults
 
+    try:
+        import yaml
+        with open(cfg_path) as f:
+            user_cfg = yaml.safe_load(f) or {}
+        for key, val in user_cfg.items():
+            if isinstance(val, dict) and key in defaults and isinstance(defaults[key], dict):
+                defaults[key].update(val)
+            else:
+                defaults[key] = val
+        return defaults
+    except Exception as e:
+        logger.error(f"Failed to parse config.yaml: {e}. Using defaults.")
+        return defaults
+    
 class CameraThread(threading.Thread):
     def __init__(self, zone_name: str, camera_id: int, resolution: tuple[int, int]):
         super().__init__(daemon=True, name=f'cam-{zone_name}')
-        self.zone_name = zone_name
-        self.camera_id = camera_id
+        self.zone_name  = zone_name
+        self.camera_id  = camera_id
         self.resolution = resolution
         self.latest_frame: Optional[np.ndarray] = None
-        self._lock = threading.Lock()
+        self._lock    = threading.Lock()
         self._running = False
         self._cap: Optional[cv2.VideoCapture] = None
 
@@ -78,16 +115,18 @@ class ZoneProcessor:
         detector: YOLOv5TFLiteDetector,
         capacity_manager: CapacityManager,
         signage: SignageController,
+        alert_manager: AlertManager,
         show_display: bool = False,
     ):
-        self.config   = config
-        self.detector = detector
-        self.capacity = capacity_manager
-        self.signage  = signage
-        self.show_display = show_display
+        self.config         = config
+        self.detector       = detector
+        self.capacity       = capacity_manager
+        self.signage        = signage
+        self.alert_manager  = alert_manager
+        self.show_display   = show_display
 
         self.heatmap = HeatmapAccumulator(
-            frame_size=CAMERA_RESOLUTION[::-1],
+            frame_size=tuple(reversed(config._resolution)),
             decay_factor=0.95,
             gaussian_radius=28,
             colormap='jet',
@@ -110,6 +149,7 @@ class ZoneProcessor:
             count=result.count,
             violations=len(result.violations),
         )
+        self.alert_manager.on_violations(self.config.name, len(result.violations))
 
         now = time.time()
         if now - self._last_prediction_push >= 60:
@@ -142,7 +182,6 @@ class ZoneProcessor:
                 if i == a or i == b:
                     color = (0, 0, 220)
                     break
-
             cv2.rectangle(annotated, (det.x1, det.y1), (det.x2, det.y2), color, 2)
             cv2.putText(
                 annotated, f'{det.confidence:.2f}',
@@ -176,34 +215,59 @@ class ZoneProcessor:
     def get_peak_warning(self) -> Optional[dict]:
         return self.predictor.peak_warning(warn_threshold=0.80)
 
+    def get_heatmap_frame(self):
+        return self.heatmap.get_colored_heatmap()
 
 class CrowdSenseApp:
-    def __init__(self, zone_names: list[str], show_display: bool = False):
-        self.zone_names  = zone_names
+    def __init__(self, zone_names: list[str], cfg: dict, show_display: bool = False):
+        self.zone_names   = zone_names
+        self.cfg          = cfg
         self.show_display = show_display
-        self._running = False
+        self._running     = False
+        all_zone_cfgs = {}
+        for name, z in cfg["zones"].items():
+            zc = ZoneConfig(
+                name=name,
+                max_capacity=z["max_capacity"],
+                camera_id=z["camera_id"],
+                thresholds=z.get("thresholds", {}),
+            )
+            zc._resolution = cfg["camera"]["resolution"]  # stash for ZoneProcessor
+            all_zone_cfgs[name] = zc
 
-        self.zone_configs = [ZONE_CONFIGS[n] for n in zone_names if n in ZONE_CONFIGS]
+        self.zone_configs = [all_zone_cfgs[n] for n in zone_names if n in all_zone_cfgs]
         if not self.zone_configs:
-            raise ValueError(f'No valid zones in {zone_names}. Available: {list(ZONE_CONFIGS)}')
+            raise ValueError(f'No valid zones in {zone_names}. Available: {list(all_zone_cfgs)}')
 
+        det = cfg["detection"]
         self.detector = YOLOv5TFLiteDetector(
-            model_path=DETECTION_MODEL,
-            input_size=320,
-            conf_threshold=0.45,
+            model_path=det["model_path"],
+            input_size=det["input_size"],
+            conf_threshold=det["conf_threshold"],
         )
 
         self.capacity_manager = CapacityManager(zones=self.zone_configs)
-        self.signage = SignageController(self.capacity_manager, output_mode=SIGNAGE_MODE)
+        sig_cfg = cfg["signage"]
+        self.signage = SignageController(self.capacity_manager, output_mode=sig_cfg["mode"])
+        alert_cfg = cfg["alerts"]
+        self.alert_manager = AlertManager(
+            cooldown_minutes=alert_cfg.get("cooldown_minutes", 5),
+            email_cfg=alert_cfg.get("email"),
+            ntfy_cfg=alert_cfg.get("ntfy"),
+        )
+        self.capacity_manager.register_status_callback(self.alert_manager.on_status_change)
 
         self.processors: dict[str, ZoneProcessor] = {
-            cfg.name: ZoneProcessor(cfg, self.detector, self.capacity_manager, self.signage, show_display)
-            for cfg in self.zone_configs
+            zc.name: ZoneProcessor(
+                zc, self.detector, self.capacity_manager,
+                self.signage, self.alert_manager, show_display,
+            )
+            for zc in self.zone_configs
         }
 
         self.cameras: dict[str, CameraThread] = {
-            cfg.name: CameraThread(cfg.name, cfg.camera_id, CAMERA_RESOLUTION)
-            for cfg in self.zone_configs
+            zc.name: CameraThread(zc.name, zc.camera_id, tuple(cfg["camera"]["resolution"]))
+            for zc in self.zone_configs
         }
 
         self._metrics_log = []
@@ -218,9 +282,12 @@ class CrowdSenseApp:
 
         time.sleep(2.0)
         self._running = True
-
-        fps_clock = time.perf_counter()
-        frame_count = 0
+        frame_count   = 0
+        try:
+            from api_server import update_heatmap as _push_heatmap
+            _heatmap_push_available = True
+        except Exception:
+            _heatmap_push_available = False
 
         try:
             while self._running:
@@ -233,17 +300,23 @@ class CrowdSenseApp:
                     self._metrics_log.append(metrics)
 
                     frame_count += 1
+
                     if frame_count % 30 == 0:
                         logger.info(json.dumps(metrics))
 
+                        if _heatmap_push_available:
+                            hm_frame = self.processors[zone_name].get_heatmap_frame()
+                            if hm_frame is not None:
+                                _push_heatmap(zone_name, hm_frame)
+
                         warning = self.processors[zone_name].get_peak_warning()
                         if warning:
-                            occupancy_pct = warning['occupancy_pct']
-                            minutes_ahead = warning['minutes_ahead']
+                            occ = warning['occupancy_pct']
+                            mins = warning['minutes_ahead']
                             logger.warning(
-                                f'[PEAK WARNING] {zone_name}: {occupancy_pct}% '
-                                f'predicted in {minutes_ahead} min'
+                                f'[PEAK WARNING] {zone_name}: {occ}% predicted in {mins} min'
                             )
+                            self.alert_manager.on_peak_warning(zone_name, occ, mins)
 
                 if self.show_display and cv2.waitKey(1) & 0xFF == ord('q'):
                     break
@@ -269,20 +342,26 @@ class CrowdSenseApp:
             json.dump(self._metrics_log[-1000:], f, indent=2)
         logger.info(f'Metrics saved → {log_path}')
 
+
 def main():
     parser = argparse.ArgumentParser(description='CrowdSense — Crowd Density Monitor')
     parser.add_argument(
-        '--zones', nargs='+', default=['cafeteria'],
-        choices=list(ZONE_CONFIGS.keys()),
-        help='Zones to monitor (space-separated)',
+        '--zones', nargs='*', default=None,
+        help='Zones to monitor (space-separated). Defaults to all zones in config.yaml.',
     )
     parser.add_argument(
         '--display', action='store_true',
-        help='Show live OpenCV window (requires monitor connected to Pi)',
+        help='Show live OpenCV window (requires a monitor connected to the Pi).',
+    )
+    parser.add_argument(
+        '--config', default='config.yaml',
+        help='Path to config file (default: config.yaml).',
     )
     args = parser.parse_args()
 
-    app = CrowdSenseApp(zone_names=args.zones, show_display=args.display)
+    cfg = load_config(args.config)
+    zone_names = args.zones if args.zones else list(cfg["zones"].keys())
+    app = CrowdSenseApp(zone_names=zone_names, cfg=cfg, show_display=args.display)
     app.run()
 
 if __name__ == '__main__':

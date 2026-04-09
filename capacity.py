@@ -224,11 +224,10 @@ class SignageController:
             logger.error(f"MQTT publish failed: {e}")
 
     def _post_http(self, zone_name: str, snapshot: ZoneSnapshot):
-        """POST zone status to a REST API endpoint."""
         try:
             import requests, json
             requests.post(
-                url=f"http://localhost:5000/api/zone/{zone_name}",
+                url=f"http://localhost:5000/api/zones/{zone_name}",
                 json={
                     "count":     snapshot.count,
                     "status":    snapshot.status.value,
