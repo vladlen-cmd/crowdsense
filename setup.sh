@@ -76,14 +76,73 @@ echo "  → MQTT broker started on port 1883."
 # ---- Create log directory ----
 mkdir -p logs data
 
+# ---- Systemd service files ----
+echo "[6/6] Installing systemd services..."
+
+INSTALL_DIR="$(pwd)"
+VENV_PYTHON="$INSTALL_DIR/.venv/bin/python"
+SERVICE_USER="$(whoami)"
+
+# crowdsense-monitor.service — main detection loop
+sudo tee /etc/systemd/system/crowdsense-monitor.service > /dev/null <<SERVICE
+[Unit]
+Description=CrowdSense Crowd Monitor
+After=network.target
+
+[Service]
+Type=simple
+User=$SERVICE_USER
+WorkingDirectory=$INSTALL_DIR
+ExecStart=$VENV_PYTHON main.py --zones cafeteria library auditorium
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+# crowdsense-api.service — Flask REST API / dashboard backend
+sudo tee /etc/systemd/system/crowdsense-api.service > /dev/null <<SERVICE
+[Unit]
+Description=CrowdSense API Server
+After=network.target
+
+[Service]
+Type=simple
+User=$SERVICE_USER
+WorkingDirectory=$INSTALL_DIR
+ExecStart=$VENV_PYTHON api_server.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+sudo systemctl daemon-reload
+sudo systemctl enable crowdsense-monitor crowdsense-api
+echo "  → Services installed. Start with:"
+echo "    sudo systemctl start crowdsense-monitor crowdsense-api"
+echo "  → View logs with:"
+echo "    journalctl -u crowdsense-monitor -f"
+
 echo ""
 echo "=========================================="
 echo "  Setup complete!"
 echo ""
-echo "  Usage:"
+echo "  Manual usage:"
 echo "    source .venv/bin/activate"
 echo "    python main.py --zones cafeteria --display"
-echo "    python api_server.py   (in separate terminal)"
+echo "    python api_server.py   (in a separate terminal)"
+echo ""
+echo "  Or start as system services (auto-run on boot):"
+echo "    sudo systemctl start crowdsense-monitor crowdsense-api"
+echo ""
+echo "  Alert delivery is configured in config.yaml."
 echo ""
 echo "  If camera was just enabled, reboot first:"
 echo "    sudo reboot"

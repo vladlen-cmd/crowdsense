@@ -5,7 +5,7 @@ import logging
 import base64
 from pathlib import Path
 try:
-    from flask import Flask, jsonify, request, Response
+    from flask import Flask, jsonify, request, Response, send_file
     from flask_cors import CORS
     HAS_FLASK = True
 except ImportError:
@@ -17,12 +17,19 @@ logger = logging.getLogger(__name__)
 _zone_store: dict = {}
 _history_store: dict = {}
 _heatmap_store: dict = {}
+_forecast_store: dict = {}          # zone_name -> list[{minutes_ahead, occupancy_pct}]
+
+ALERT_HISTORY_FILE = Path("logs/alerts.json")
 
 HISTORY_MAX = 720
 
 def create_app():
     app = Flask(__name__)
     CORS(app)
+
+    @app.route("/", methods=["GET"])
+    def dashboard():
+        return send_file(Path(__file__).parent / "dashboard.html")
 
     @app.route("/api/zones", methods=["GET"])
     def get_all_zones():
@@ -42,12 +49,13 @@ def create_app():
     @app.route("/api/zones/<zone_name>", methods=["POST"])
     def update_zone(zone_name):
         data = request.get_json()
-        _zone_store[zone_name] = {**data, "timestamp": time.time()}
+        now = time.time()
+        _zone_store[zone_name] = {**data, "timestamp": now}
 
         if zone_name not in _history_store:
             _history_store[zone_name] = []
         _history_store[zone_name].append({
-            "t": time.time(),
+            "t": now,
             "count": data.get("count", 0),
             "occupancy": data.get("occupancy", 0),
             "violations": data.get("violations", 0),
@@ -55,15 +63,28 @@ def create_app():
         if len(_history_store[zone_name]) > HISTORY_MAX:
             _history_store[zone_name] = _history_store[zone_name][-HISTORY_MAX:]
 
+        # If the caller included forecast data, store it for the forecast endpoint
+        if "forecast" in data:
+            _forecast_store[zone_name] = data["forecast"]
+
         return jsonify({"ok": True})
 
     @app.route("/api/zones/<zone_name>/forecast", methods=["GET"])
     def get_forecast(zone_name):
-        mock_forecast = [
-            {"minutes_ahead": i * 5, "occupancy_pct": min(95, 40 + i * 3)}
-            for i in range(1, 13)
-        ]
-        return jsonify({"zone": zone_name, "forecast": mock_forecast})
+        forecast = _forecast_store.get(zone_name)
+        if forecast is None:
+            # Fallback: heuristic extrapolation from recent history
+            history = _history_store.get(zone_name, [])
+            if history:
+                recent_occ = [e["occupancy"] for e in history[-5:]]
+                avg = sum(recent_occ) / len(recent_occ)
+                forecast = [
+                    {"minutes_ahead": i * 5, "occupancy_pct": round(min(100, avg), 1)}
+                    for i in range(1, 13)
+                ]
+            else:
+                forecast = []
+        return jsonify({"zone": zone_name, "forecast": forecast})
 
     @app.route("/api/zones/<zone_name>/heatmap", methods=["GET"])
     def get_heatmap(zone_name):
@@ -115,6 +136,21 @@ def create_app():
                     "ts": zone.get("timestamp", time.time()),
                 })
         return jsonify({"alerts": alerts})
+
+    @app.route("/api/alerts/history", methods=["GET"])
+    def get_alert_history():
+        """Return persisted alert history from logs/alerts.json."""
+        limit = int(request.args.get("limit", 50))
+        zone  = request.args.get("zone")
+        try:
+            if ALERT_HISTORY_FILE.exists():
+                raw = json.loads(ALERT_HISTORY_FILE.read_text())
+                if zone:
+                    raw = [a for a in raw if a.get("zone") == zone]
+                return jsonify({"alerts": raw[-limit:]})
+        except Exception as e:
+            logger.error(f"Could not read alert history: {e}")
+        return jsonify({"alerts": []})
 
     @app.route("/api/health", methods=["GET"])
     def health():
