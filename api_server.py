@@ -14,10 +14,11 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-_zone_store: dict = {}
+_zone_store: dict    = {}
 _history_store: dict = {}
 _heatmap_store: dict = {}
-_forecast_store: dict = {}          # zone_name -> list[{minutes_ahead, occupancy_pct}]
+_forecast_store: dict = {}   # zone_name -> list[{minutes_ahead, occupancy_pct}]
+_frame_store: dict   = {}    # zone_name -> latest annotated JPEG bytes (for MJPEG stream)
 
 ALERT_HISTORY_FILE = Path("logs/alerts.json")
 
@@ -86,6 +87,23 @@ def create_app():
                 forecast = []
         return jsonify({"zone": zone_name, "forecast": forecast})
 
+    @app.route("/api/zones/<zone_name>/stream", methods=["GET"])
+    def stream_zone(zone_name):
+        def generate():
+            while True:
+                frame = _frame_store.get(zone_name)
+                if frame is None:
+                    time.sleep(0.1)
+                    continue
+                yield (
+                    b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n\r\n"
+                    + frame +
+                    b"\r\n"
+                )
+                time.sleep(0.05)   # ~20 fps cap
+        return Response(generate(), mimetype="multipart/x-mixed-replace; boundary=frame")
+
     @app.route("/api/zones/<zone_name>/heatmap", methods=["GET"])
     def get_heatmap(zone_name):
         heatmap_bytes = _heatmap_store.get(zone_name)
@@ -139,7 +157,6 @@ def create_app():
 
     @app.route("/api/alerts/history", methods=["GET"])
     def get_alert_history():
-        """Return persisted alert history from logs/alerts.json."""
         limit = int(request.args.get("limit", 50))
         zone  = request.args.get("zone")
         try:
@@ -162,6 +179,27 @@ def update_heatmap(zone_name: str, heatmap_bgr):
     _, buf = cv2.imencode(".jpg", heatmap_bgr, [cv2.IMWRITE_JPEG_QUALITY, 75])
     _heatmap_store[zone_name] = bytes(buf)
 
+def update_frame(zone_name: str, annotated_bgr):
+    import cv2
+    _, buf = cv2.imencode(".jpg", annotated_bgr, [cv2.IMWRITE_JPEG_QUALITY, 65])
+    _frame_store[zone_name] = bytes(buf)
+
+def update_zone_data(zone_name: str, metrics: dict):
+    now = time.time()
+    _zone_store[zone_name] = {**metrics, "timestamp": now}
+    if zone_name not in _history_store:
+        _history_store[zone_name] = []
+    _history_store[zone_name].append({
+        "t": now,
+        "count": metrics.get("count", 0),
+        "occupancy": metrics.get("occupancy", 0),
+        "violations": metrics.get("violations", 0),
+    })
+    if len(_history_store[zone_name]) > HISTORY_MAX:
+        _history_store[zone_name] = _history_store[zone_name][-HISTORY_MAX:]
+    if "forecast" in metrics:
+        _forecast_store[zone_name] = metrics["forecast"]
+
 def run_server(host: str = "0.0.0.0", port: int = 5000, debug: bool = False):
     if not HAS_FLASK:
         logger.error("Flask not installed.")
@@ -169,6 +207,19 @@ def run_server(host: str = "0.0.0.0", port: int = 5000, debug: bool = False):
     app = create_app()
     logger.info(f"API server starting on http://{host}:{port}")
     app.run(host=host, port=port, debug=debug, threaded=True)
+
+def run_in_thread(host: str = "0.0.0.0", port: int = 5000):
+    if not HAS_FLASK:
+        logger.warning("Flask not installed — dashboard unavailable.")
+        return
+    t = threading.Thread(
+        target=run_server,
+        kwargs={"host": host, "port": port, "debug": False},
+        daemon=True,
+        name="api-server",
+    )
+    t.start()
+    logger.info(f"Dashboard → http://{host}:{port}/")
 
 if __name__ == "__main__":
     _zone_store = {
