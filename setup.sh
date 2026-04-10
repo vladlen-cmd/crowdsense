@@ -13,7 +13,7 @@ echo "[1/5] Installing system packages..."
 sudo apt-get update -qq
 sudo apt-get install -y \
     python3-pip python3-dev python3-venv \
-    libcamera-apps libcamera-dev \
+    libopenblas-dev \
     libatlas-base-dev \
     libjpeg-dev libopenjp2-7 \
     mosquitto mosquitto-clients \
