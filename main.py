@@ -80,7 +80,21 @@ def load_config(path: str = "config.yaml") -> dict:
         logger.error(f"Failed to parse config.yaml: {e}. Using defaults.")
         return defaults
     
+try:
+    from picamera2 import Picamera2
+    HAS_PICAMERA2 = True
+except Exception:
+    HAS_PICAMERA2 = False
+
+
 class CameraThread(threading.Thread):
+    """
+    Camera capture thread with three-tier fallback for Raspberry Pi:
+      1. picamera2  — best for Pi Camera Module (CSI) on Bookworm/libcamera stack
+      2. GStreamer libcamerasrc pipeline  — alternative libcamera path via OpenCV
+      3. OpenCV VideoCapture (V4L2)  — USB webcams and legacy Pi camera with v4l2-compat
+    """
+
     def __init__(self, zone_name: str, camera_id: int, resolution: tuple[int, int]):
         super().__init__(daemon=True, name=f'cam-{zone_name}')
         self.zone_name  = zone_name
@@ -89,30 +103,88 @@ class CameraThread(threading.Thread):
         self.latest_frame: Optional[np.ndarray] = None
         self._lock    = threading.Lock()
         self._running = False
-        self._cap: Optional[cv2.VideoCapture] = None
 
     def run(self):
         self._running = True
-        self._cap = cv2.VideoCapture(self.camera_id)
-        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH,  self.resolution[0])
-        self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
-        self._cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        w, h = self.resolution
 
-        if not self._cap.isOpened():
-            logger.error(f'[{self.zone_name}] Cannot open camera {self.camera_id}')
-            return
+        # ── Tier 1: picamera2 (Pi Camera Module on Bookworm) ──────────────────
+        if HAS_PICAMERA2:
+            try:
+                self._run_picamera2(w, h)
+                return
+            except Exception as e:
+                logger.warning(f'[{self.zone_name}] picamera2 failed ({e}), trying GStreamer...')
 
-        logger.info(f'[{self.zone_name}] Camera {self.camera_id} opened.')
-
-        while self._running:
-            ret, frame = self._cap.read()
+        # ── Tier 2: GStreamer libcamerasrc pipeline ────────────────────────────
+        gst = (
+            f'libcamerasrc ! '
+            f'video/x-raw,width={w},height={h},framerate=30/1 ! '
+            f'videoconvert ! video/x-raw,format=BGR ! appsink drop=1'
+        )
+        cap = cv2.VideoCapture(gst, cv2.CAP_GSTREAMER)
+        if cap.isOpened():
+            ret, _ = cap.read()
             if ret:
+                logger.info(f'[{self.zone_name}] Camera {self.camera_id} opened via GStreamer/libcamera.')
+                self._run_cap(cap)
+                return
+            cap.release()
+        logger.warning(f'[{self.zone_name}] GStreamer pipeline failed, falling back to V4L2...')
+
+        # ── Tier 3: standard OpenCV V4L2 (USB webcams / v4l2-compat) ─────────
+        self._run_v4l2(w, h)
+
+    def _run_picamera2(self, w: int, h: int):
+        cam = Picamera2(self.camera_id)
+        cfg = cam.create_video_configuration(
+            main={'size': (w, h), 'format': 'BGR888'},
+            controls={'FrameRate': 30},
+        )
+        cam.configure(cfg)
+        cam.start()
+        logger.info(f'[{self.zone_name}] Camera {self.camera_id} opened via picamera2.')
+        try:
+            while self._running:
+                frame = cam.capture_array()
+                with self._lock:
+                    self.latest_frame = frame
+        finally:
+            cam.stop()
+            cam.close()
+
+    def _run_v4l2(self, w: int, h: int):
+        cap = cv2.VideoCapture(self.camera_id)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH,  w)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        if not cap.isOpened():
+            logger.error(
+                f'[{self.zone_name}] Cannot open camera {self.camera_id}. '
+                f'Run  python main.py --scan-cameras  to see available IDs.'
+            )
+            return
+        logger.info(f'[{self.zone_name}] Camera {self.camera_id} opened via V4L2/OpenCV.')
+        self._run_cap(cap)
+
+    def _run_cap(self, cap: cv2.VideoCapture):
+        consecutive_failures = 0
+        while self._running:
+            ret, frame = cap.read()
+            if ret:
+                consecutive_failures = 0
                 with self._lock:
                     self.latest_frame = frame
             else:
+                consecutive_failures += 1
+                if consecutive_failures == 30:
+                    logger.warning(
+                        f'[{self.zone_name}] 30 consecutive read failures — '
+                        f'camera may be disconnected or needs v4l2-compat. '
+                        f'Try: sudo modprobe v4l2-compat'
+                    )
                 time.sleep(0.01)
-
-        self._cap.release()
+        cap.release()
 
     def get_frame(self) -> Optional[np.ndarray]:
         with self._lock:
