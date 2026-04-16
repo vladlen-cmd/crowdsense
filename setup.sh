@@ -15,12 +15,17 @@ sudo apt-get update -qq
 # Required — script will abort if these fail
 sudo apt-get install -y \
     python3-pip python3-dev python3-venv \
-    libopenblas-dev \
     libjpeg-dev libopenjp2-7 \
     ffmpeg \
     v4l-utils \
     mosquitto mosquitto-clients \
     git wget curl
+
+# BLAS library — only needed when building numpy from source; pre-built wheels include it
+# Try in order: openblas (Bookworm) → atlas (older Pi OS) → skip
+sudo apt-get install -y libopenblas-dev 2>/dev/null \
+    || sudo apt-get install -y libatlas-base-dev 2>/dev/null \
+    || echo "  → No BLAS dev library found — OK, pre-built numpy wheels include their own BLAS"
 
 # Optional OpenCV video backend libraries — install best-effort, don't abort on failure
 sudo apt-get install -y libavdevice-dev libavcodec-dev libavformat-dev libswscale-dev 2>/dev/null \
