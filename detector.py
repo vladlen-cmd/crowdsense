@@ -211,7 +211,13 @@ class YOLOv5TFLiteDetector:
 
     def run_inference(self, frame: np.ndarray) -> list[Detection]:
         if self._interpreter is None:
-            logger.error("Model not loaded.")
+            if not getattr(self, "_model_warn_logged", False):
+                logger.error(
+                    "Model not loaded — detections disabled. "
+                    "Run:  python download_model.py  then restart."
+                )
+                self._model_warn_logged = True
+            return []
             return []
 
         orig_h, orig_w = frame.shape[:2]

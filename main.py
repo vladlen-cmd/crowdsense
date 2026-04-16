@@ -137,8 +137,9 @@ class CameraThread(threading.Thread):
 
     def _run_picamera2(self, w: int, h: int):
         cam = Picamera2(self.camera_id)
+        # Use RGB888 — picamera2's most reliable format — then convert to BGR for OpenCV
         cfg = cam.create_video_configuration(
-            main={'size': (w, h), 'format': 'BGR888'},
+            main={'size': (w, h), 'format': 'RGB888'},
             controls={'FrameRate': 30},
         )
         cam.configure(cfg)
@@ -146,7 +147,9 @@ class CameraThread(threading.Thread):
         logger.info(f'[{self.zone_name}] Camera {self.camera_id} opened via picamera2.')
         try:
             while self._running:
-                frame = cam.capture_array()
+                frame = cam.capture_array("main")
+                # picamera2 returns RGB; OpenCV expects BGR
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 with self._lock:
                     self.latest_frame = frame
         finally:
