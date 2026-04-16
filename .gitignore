@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Logs & data
+logs/
+data/
+
+# Models (downloaded at deploy time via setup.sh)
+models/*.tflite
+
+# Secrets / config overrides
+*.env
+secrets.yaml
+
+# Editor
+.vscode/
+.idea/
