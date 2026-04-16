@@ -88,6 +88,10 @@ class YOLOv5TFLiteDetector:
             )
             self._interpreter = None
             return
+        if not self.model_path.exists():
+            logger.warning(f"Model not found: {self.model_path}. Attempting auto-download...")
+            self._auto_download()
+
         try:
             self._interpreter = tflite.Interpreter(
                 model_path=str(self.model_path),
@@ -101,6 +105,22 @@ class YOLOv5TFLiteDetector:
         except Exception as e:
             logger.warning(f"Failed to load TFLite model: {e}")
             self._interpreter = None
+
+    def _auto_download(self):
+        """Try to download the model automatically using download_model.py."""
+        try:
+            import subprocess, sys
+            script = Path(__file__).parent / "download_model.py"
+            result = subprocess.run(
+                [sys.executable, str(script)],
+                timeout=120,
+            )
+            if result.returncode != 0:
+                logger.error(
+                    f"Auto-download failed. Run manually:  python download_model.py"
+                )
+        except Exception as e:
+            logger.error(f"Auto-download error: {e}. Run manually:  python download_model.py")
 
     def _preprocess(self, frame: np.ndarray) -> np.ndarray:
         resized = cv2.resize(frame, (self.input_size, self.input_size))

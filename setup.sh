@@ -82,41 +82,7 @@ fi
 # ---- YOLOv5n model ----
 echo "[4/5] Downloading YOLOv5n TFLite model..."
 mkdir -p models
-
-_download_model() {
-    local url="$1"
-    echo "  → Trying: $url"
-    wget -q --show-progress "$url" -O models/yolov5n-int8.tflite
-    # Validate: a real TFLite file must be > 1 MB
-    local size
-    size=$(stat -c%s models/yolov5n-int8.tflite 2>/dev/null || echo 0)
-    if [ "$size" -gt 1000000 ]; then
-        echo "  → Model downloaded OK (${size} bytes)."
-        return 0
-    else
-        echo "  → Download invalid (${size} bytes) — trying next source."
-        rm -f models/yolov5n-int8.tflite
-        return 1
-    fi
-}
-
-if [ ! -f models/yolov5n-int8.tflite ]; then
-    # Try Ultralytics assets CDN first, then the v7.0 release tag
-    _download_model "https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov5n-int8.tflite" || \
-    _download_model "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n-int8.tflite" || \
-    echo "  ⚠ Model download failed. Export it manually and place at models/yolov5n-int8.tflite"
-else
-    size=$(stat -c%s models/yolov5n-int8.tflite 2>/dev/null || echo 0)
-    if [ "$size" -gt 1000000 ]; then
-        echo "  → Model already exists and looks valid (${size} bytes), skipping."
-    else
-        echo "  ⚠ Existing model file is too small (${size} bytes) — likely corrupt. Re-downloading..."
-        rm -f models/yolov5n-int8.tflite
-        _download_model "https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov5n-int8.tflite" || \
-        _download_model "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n-int8.tflite" || \
-        echo "  ⚠ Model download failed. Export it manually and place at models/yolov5n-int8.tflite"
-    fi
-fi
+python download_model.py || echo "  ⚠ Model download failed — run  python download_model.py  manually after setup."
 
 # ---- Enable Pi Camera ----
 echo "[5/5] Configuring Pi Camera..."
