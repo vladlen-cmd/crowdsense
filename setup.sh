@@ -15,7 +15,7 @@ sudo apt-get update -qq
 # Required — script will abort if these fail
 sudo apt-get install -y \
     python3-pip python3-dev python3-venv \
-    libatlas-base-dev \
+    libopenblas-dev \
     libjpeg-dev libopenjp2-7 \
     ffmpeg \
     v4l-utils \
