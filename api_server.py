@@ -212,6 +212,15 @@ def run_in_thread(host: str = "0.0.0.0", port: int = 5000):
     if not HAS_FLASK:
         logger.warning("Flask not installed — dashboard unavailable.")
         return
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        if s.connect_ex(("127.0.0.1", port)) == 0:
+            logger.error(
+                f"Port {port} is already in use — another instance is running.\n"
+                f"  Kill it with:  pkill -f 'python main.py'\n"
+                f"  Then restart:  python main.py"
+            )
+            return
     t = threading.Thread(
         target=run_server,
         kwargs={"host": host, "port": port, "debug": False},

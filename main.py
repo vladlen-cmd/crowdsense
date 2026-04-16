@@ -137,19 +137,39 @@ class CameraThread(threading.Thread):
 
     def _run_picamera2(self, w: int, h: int):
         cam = Picamera2(self.camera_id)
-        # Use RGB888 — picamera2's most reliable format — then convert to BGR for OpenCV
-        cfg = cam.create_video_configuration(
-            main={'size': (w, h), 'format': 'RGB888'},
-            controls={'FrameRate': 30},
-        )
-        cam.configure(cfg)
-        cam.start()
+        try:
+            # Use RGB888 — picamera2's most reliable format — then convert to BGR for OpenCV
+            cfg = cam.create_video_configuration(
+                main={'size': (w, h), 'format': 'RGB888'},
+                controls={'FrameRate': 30},
+            )
+            cam.configure(cfg)
+            cam.start()
+        except Exception:
+            # Make sure we release the camera handle before re-raising so
+            # it doesn't stay locked for the GStreamer / V4L2 fallback.
+            try:
+                cam.close()
+            except Exception:
+                pass
+            raise
+
         logger.info(f'[{self.zone_name}] Camera {self.camera_id} opened via picamera2.')
+        first_frame = True
         try:
             while self._running:
                 frame = cam.capture_array("main")
-                # picamera2 returns RGB; OpenCV expects BGR
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                # Log shape/dtype once so format issues are immediately visible in logs
+                if first_frame:
+                    logger.info(
+                        f'[{self.zone_name}] picamera2 frame shape={frame.shape} dtype={frame.dtype}'
+                    )
+                    first_frame = False
+                # Handle both 3-channel RGB and 4-channel XRGB output
+                if frame.ndim == 3 and frame.shape[2] == 4:
+                    frame = frame[:, :, :3]   # drop alpha / X channel → still RGB
+                if frame.ndim == 3 and frame.shape[2] == 3:
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 with self._lock:
                     self.latest_frame = frame
         finally:
@@ -181,11 +201,14 @@ class CameraThread(threading.Thread):
             else:
                 consecutive_failures += 1
                 if consecutive_failures == 30:
-                    logger.warning(
-                        f'[{self.zone_name}] 30 consecutive read failures — '
-                        f'camera may be disconnected or needs v4l2-compat. '
-                        f'Try: sudo modprobe v4l2-compat'
+                    logger.error(
+                        f'[{self.zone_name}] 30 consecutive read failures — camera is locked or '
+                        f'disconnected. Kill all python/libcamera processes and restart:\n'
+                        f'  pkill -f "python main.py" && pkill -f libcamera\n'
+                        f'  sudo systemctl restart crowdsense-monitor\n'
+                        f'Camera thread exiting.'
                     )
+                    break
                 time.sleep(0.01)
         cap.release()
 
