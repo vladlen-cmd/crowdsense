@@ -4,7 +4,6 @@ Download the YOLOv5n INT8 TFLite model required by CrowdSense.
 Run:  python download_model.py
 """
 import sys
-import struct
 import urllib.request
 import urllib.error
 from pathlib import Path
@@ -12,10 +11,15 @@ from pathlib import Path
 MODEL_PATH = Path("models/yolov5n-int8.tflite")
 MIN_SIZE   = 1_500_000   # valid model is ~3.8 MB; reject anything smaller
 
-# Sources tried in order
+# Sources tried in order — ordered by reliability
 URLS = [
-    "https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov5n-int8.tflite",
+    # Ultralytics GitHub releases (multiple tags in case one is missing)
     "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n-int8.tflite",
+    "https://github.com/ultralytics/yolov5/releases/download/v6.2/yolov5n-int8.tflite",
+    "https://github.com/ultralytics/yolov5/releases/download/v6.1/yolov5n-int8.tflite",
+    # Ultralytics CDN / assets repo
+    "https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov5n-int8.tflite",
+    "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov5n-int8.tflite",
 ]
 
 
@@ -26,7 +30,6 @@ def is_valid_tflite(path: Path) -> bool:
     try:
         with open(path, "rb") as f:
             header = f.read(8)
-        # FlatBuffer: bytes [4:8] == b'TFL3'
         return header[4:8] == b"TFL3"
     except Exception:
         return False
@@ -59,23 +62,47 @@ def download(url: str, dest: Path) -> bool:
         return False
 
 
-def try_ultralytics_export():
-    """Last resort: use the ultralytics package to export the model."""
-    print("  Trying ultralytics export (requires PyTorch — may be slow)...")
+def _pip_install(package: str) -> bool:
+    import subprocess
+    print(f"  Installing {package} ...")
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", package, "-q"],
+        timeout=300,
+    )
+    return result.returncode == 0
+
+
+def try_ultralytics_export() -> bool:
+    """Use the ultralytics package to export the model (auto-installs if missing)."""
+    print("  Trying ultralytics export ...")
     try:
-        from ultralytics import YOLO
+        from ultralytics import YOLO  # type: ignore[import-untyped]
+    except ImportError:
+        print("  ultralytics not installed — attempting auto-install (this may take a minute)...")
+        if not _pip_install("ultralytics"):
+            print("  pip install ultralytics failed.")
+            return False
+        try:
+            from ultralytics import YOLO  # type: ignore[import-untyped]
+        except ImportError:
+            print("  Still cannot import ultralytics after install.")
+            return False
+
+    try:
         MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
         model = YOLO("yolov5n.pt")
         model.export(format="tflite", int8=True, imgsz=320)
-        # ultralytics exports to yolov5n_saved_model/yolov5n_full_integer_quant.tflite
-        for candidate in Path(".").rglob("*int8*.tflite"):
-            candidate.rename(MODEL_PATH)
+        # Locate the output file — ultralytics saves it as *int8*.tflite
+        for candidate in sorted(Path(".").rglob("*int8*.tflite"), key=lambda p: p.stat().st_mtime, reverse=True):
+            if candidate.resolve() != MODEL_PATH.resolve():
+                candidate.rename(MODEL_PATH)
             print(f"  Exported model moved to {MODEL_PATH}")
             return True
+        # Maybe it was already written to MODEL_PATH
+        if is_valid_tflite(MODEL_PATH):
+            print(f"  Model already at {MODEL_PATH}")
+            return True
         print("  Export succeeded but could not locate output file.")
-        return False
-    except ImportError:
-        print("  ultralytics not installed — skipping export.")
         return False
     except Exception as e:
         print(f"  Export failed: {e}")
@@ -86,7 +113,6 @@ def main():
     print("\n=== CrowdSense Model Download ===\n")
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    # Already valid?
     if is_valid_tflite(MODEL_PATH):
         size_mb = MODEL_PATH.stat().st_size / 1_048_576
         print(f"Model already present and valid ({size_mb:.1f} MB): {MODEL_PATH}")
@@ -96,26 +122,32 @@ def main():
         print(f"Existing file is corrupt or too small — removing and re-downloading.")
         MODEL_PATH.unlink()
 
-    # Try each URL
     for url in URLS:
         if download(url, MODEL_PATH):
             print(f"\nModel saved to {MODEL_PATH}")
             return 0
 
-    # Last resort
+    print("\nAll direct downloads failed — trying ultralytics export fallback...")
     if try_ultralytics_export():
         return 0
 
-    print("\nAll download attempts failed.")
-    print("Manual fix — run this on the Pi:")
-    print()
+    print("\n" + "="*60)
+    print("All automatic methods failed.")
+    print("="*60)
+    print("\nOption 1 — export on the Pi (installs PyTorch, ~1 GB):")
     print("  pip install ultralytics")
-    print("  python -c \"")
-    print("  from ultralytics import YOLO")
-    print("  YOLO('yolov5n.pt').export(format='tflite', int8=True, imgsz=320)")
-    print("  \"")
+    print("  python -c \"from ultralytics import YOLO; YOLO('yolov5n.pt').export(format='tflite', int8=True, imgsz=320)\"")
+    print("  # Then find the output file and copy it:")
+    print("  find . -name '*int8*.tflite' -exec cp {} models/yolov5n-int8.tflite \\;")
     print()
-    print("Or copy yolov5n-int8.tflite manually to:  models/yolov5n-int8.tflite")
+    print("Option 2 — export on a PC/Mac, then copy to the Pi:")
+    print("  # On your Mac/PC:")
+    print("  pip install ultralytics")
+    print("  python -c \"from ultralytics import YOLO; YOLO('yolov5n.pt').export(format='tflite', int8=True, imgsz=320)\"")
+    print("  find . -name '*int8*.tflite'   # note the path")
+    print("  scp <path>/yolov5n-int8.tflite pi@<PI_IP>:~/crowdsense/models/")
+    print()
+    print("Option 3 — copy models/yolov5n-int8.tflite directly to the Pi via USB/SD card")
     return 1
 
 
