@@ -26,6 +26,7 @@ class HeatmapAccumulator:
         self.alpha = alpha
 
         self._heat = np.zeros((self.h, self.w), dtype=np.float32)
+        self._heat_normalized = self._heat.copy()   # safe initial state for render()
 
         self._history: deque = deque(maxlen=history_frames * 20)
 

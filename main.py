@@ -163,7 +163,7 @@ class ZoneProcessor:
             cv2.imshow(f'CrowdSense — {self.config.name}', annotated)
 
         api_server.update_frame(self.config.name, annotated)
-        api_server.update_heatmap(self.config.name, self.heatmap.get_colored_heatmap())
+        api_server.update_heatmap(self.config.name, self.heatmap.render())
 
         self._frame_count += 1
 
@@ -223,7 +223,7 @@ class ZoneProcessor:
         return self.predictor.peak_warning(warn_threshold=0.80)
 
     def get_heatmap_frame(self):
-        return self.heatmap.get_colored_heatmap()
+        return self.heatmap.render()
 
 class CrowdSenseApp:
     def __init__(self, zone_names: list[str], cfg: dict, show_display: bool = False):
@@ -356,12 +356,56 @@ def main():
         '--config', default='config.yaml',
         help='Path to config file (default: config.yaml).',
     )
+    parser.add_argument(
+        '--scan-cameras', action='store_true',
+        help='Probe all /dev/video* devices and print which camera_ids are usable, then exit.',
+    )
     args = parser.parse_args()
+
+    if args.scan_cameras:
+        _scan_cameras()
+        return
 
     cfg = load_config(args.config)
     zone_names = args.zones if args.zones else list(cfg["zones"].keys())
     app = CrowdSenseApp(zone_names=zone_names, cfg=cfg, show_display=args.display)
     app.run()
+
+
+def _scan_cameras():
+    """Probe every /dev/video* device and report which camera_ids work with OpenCV."""
+    import glob
+    print("\nScanning for available cameras...\n")
+    found = []
+    devices = sorted(glob.glob('/dev/video*'))
+    if not devices:
+        # Fallback: probe indices 0-9 directly
+        devices = [str(i) for i in range(10)]
+
+    for dev in devices:
+        try:
+            idx = int(dev.replace('/dev/video', '')) if '/dev/video' in str(dev) else int(dev)
+        except ValueError:
+            continue
+        cap = cv2.VideoCapture(idx)
+        if cap.isOpened():
+            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            ret, _ = cap.read()
+            status = "readable" if ret else "opened but no frame"
+            print(f"  [OK]  camera_id: {idx}  ({w}x{h})  — {status}")
+            found.append(idx)
+        else:
+            print(f"  [--]  camera_id: {idx}  — could not open")
+        cap.release()
+
+    print()
+    if found:
+        print(f"  Working camera IDs: {found}")
+        print("  Update camera_id values in config.yaml to match.")
+    else:
+        print("  No working cameras found. Check connections and try rebooting.")
+    print()
 
 if __name__ == '__main__':
     main()

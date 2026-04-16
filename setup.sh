@@ -2,22 +2,55 @@
 # CrowdSense — Raspberry Pi 5 Setup Script
 # Run once after cloning: bash setup.sh
 
-set -e
+set -e   # abort on unhandled errors in critical sections (camera installs use || to handle failures)
 
 echo "=========================================="
-echo "  CrowdSense Setup — Raspberry Pi 5"
+echo "  CrowdSense Setup — Raspberry Pi 4 / 5"
 echo "=========================================="
 
 # ---- System packages ----
 echo "[1/5] Installing system packages..."
 sudo apt-get update -qq
+
+# Required — script will abort if these fail
 sudo apt-get install -y \
     python3-pip python3-dev python3-venv \
-    libcamera-apps libcamera-dev \
     libatlas-base-dev \
     libjpeg-dev libopenjp2-7 \
+    ffmpeg \
+    v4l-utils \
     mosquitto mosquitto-clients \
     git wget curl
+
+# Optional OpenCV video backend libraries — install best-effort, don't abort on failure
+sudo apt-get install -y libavdevice-dev libavcodec-dev libavformat-dev libswscale-dev 2>/dev/null \
+    || echo "  → libav packages unavailable — OpenCV will use a basic video backend"
+
+# Camera support — package names differ between Pi 4 and Pi 5 / Bookworm versions
+echo "  → Installing camera stack..."
+# Pi 5 / newer Bookworm uses rpicam-apps; Pi 4 / older uses libcamera-apps
+sudo apt-get install -y rpicam-apps       2>/dev/null \
+    || sudo apt-get install -y libcamera-apps 2>/dev/null \
+    || echo "  → libcamera-apps not available (may already be bundled in the OS image)"
+
+# libcamera dev headers — optional, only needed if building OpenCV from source
+sudo apt-get install -y libcamera-dev 2>/dev/null \
+    || echo "  → libcamera-dev not installed (not required at runtime)"
+
+# picamera2 — Python API for Pi Camera modules via libcamera
+sudo apt-get install -y python3-picamera2 2>/dev/null \
+    || echo "  → python3-picamera2 not available via apt (install manually if using Pi Camera)"
+
+# Enable the V4L2 compat kernel module so libcamera cameras appear as /dev/videoN
+# This is what lets OpenCV VideoCapture(0) see the Pi Camera Module
+if ! grep -q "v4l2-compat" /etc/modules 2>/dev/null && \
+   ! [ -f /etc/modules-load.d/crowdsense-camera.conf ]; then
+    echo "v4l2-compat" | sudo tee /etc/modules-load.d/crowdsense-camera.conf > /dev/null
+    echo "  → V4L2 compat layer configured (will activate after reboot)"
+fi
+sudo modprobe v4l2-compat 2>/dev/null \
+    && echo "  → V4L2 compat module loaded — Pi Camera should now appear in /dev/video*" \
+    || echo "  → Could not load v4l2-compat now (will load on next boot)"
 
 # ---- Python environment ----
 echo "[2/5] Setting up Python environment..."
@@ -44,13 +77,40 @@ fi
 # ---- YOLOv5n model ----
 echo "[4/5] Downloading YOLOv5n TFLite model..."
 mkdir -p models
+
+_download_model() {
+    local url="$1"
+    echo "  → Trying: $url"
+    wget -q --show-progress "$url" -O models/yolov5n-int8.tflite
+    # Validate: a real TFLite file must be > 1 MB
+    local size
+    size=$(stat -c%s models/yolov5n-int8.tflite 2>/dev/null || echo 0)
+    if [ "$size" -gt 1000000 ]; then
+        echo "  → Model downloaded OK (${size} bytes)."
+        return 0
+    else
+        echo "  → Download invalid (${size} bytes) — trying next source."
+        rm -f models/yolov5n-int8.tflite
+        return 1
+    fi
+}
+
 if [ ! -f models/yolov5n-int8.tflite ]; then
-    wget -q --show-progress \
-        https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n-int8.tflite \
-        -O models/yolov5n-int8.tflite
-    echo "  → YOLOv5n INT8 model downloaded."
+    # Try Ultralytics assets CDN first, then the v7.0 release tag
+    _download_model "https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov5n-int8.tflite" || \
+    _download_model "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n-int8.tflite" || \
+    echo "  ⚠ Model download failed. Export it manually and place at models/yolov5n-int8.tflite"
 else
-    echo "  → Model already exists, skipping."
+    size=$(stat -c%s models/yolov5n-int8.tflite 2>/dev/null || echo 0)
+    if [ "$size" -gt 1000000 ]; then
+        echo "  → Model already exists and looks valid (${size} bytes), skipping."
+    else
+        echo "  ⚠ Existing model file is too small (${size} bytes) — likely corrupt. Re-downloading..."
+        rm -f models/yolov5n-int8.tflite
+        _download_model "https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov5n-int8.tflite" || \
+        _download_model "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n-int8.tflite" || \
+        echo "  ⚠ Model download failed. Export it manually and place at models/yolov5n-int8.tflite"
+    fi
 fi
 
 # ---- Enable Pi Camera ----
@@ -75,6 +135,20 @@ echo "  → MQTT broker started on port 1883."
 
 # ---- Create log directory ----
 mkdir -p logs data
+
+# ---- Detect available cameras ----
+echo ""
+echo "  Detected video devices:"
+if ls /dev/video* 2>/dev/null | head -10; then
+    echo ""
+    echo "  V4L2 camera info (run 'v4l2-ctl --list-devices' for full detail):"
+    v4l2-ctl --list-devices 2>/dev/null | head -20 || true
+else
+    echo "  No /dev/video* devices found yet. Plug in cameras and reboot if needed."
+fi
+echo ""
+echo "  → Update camera_id values in config.yaml to match the numbers above."
+echo "    Example: /dev/video0 → camera_id: 0"
 
 # ---- Systemd service files ----
 echo "[6/6] Installing systemd services..."
