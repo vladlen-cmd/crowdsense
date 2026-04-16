@@ -221,3 +221,4 @@ echo ""
 echo "  If camera was just enabled, reboot first:"
 echo "    sudo reboot"
 echo "=========================================="
+
