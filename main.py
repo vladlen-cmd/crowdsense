@@ -22,6 +22,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger('crowdsense.main')
 
+def _cv2_has_gui() -> bool:
+    """Return False if OpenCV was built without GUI support (headless install)."""
+    try:
+        # A harmless probe — will raise if highgui is not compiled in
+        cv2.namedWindow("__probe__", cv2.WINDOW_NORMAL)
+        cv2.destroyWindow("__probe__")
+        return True
+    except cv2.error:
+        return False
+
+CV2_GUI = _cv2_has_gui()
+
 def load_config(path: str = "config.yaml") -> dict:
     defaults = {
         "zones": {
@@ -124,7 +136,7 @@ class ZoneProcessor:
         self.capacity       = capacity_manager
         self.signage        = signage
         self.alert_manager  = alert_manager
-        self.show_display   = show_display
+        self.show_display   = show_display and CV2_GUI
 
         self.heatmap = HeatmapAccumulator(
             frame_size=tuple(reversed(config._resolution)),
@@ -284,6 +296,12 @@ class CrowdSenseApp:
 
     def run(self):
         logger.info(f'Starting CrowdSense for zones: {self.zone_names}')
+        if self.show_display and not CV2_GUI:
+            logger.warning(
+                '--display requested but OpenCV has no GUI support (headless build). '
+                'Display disabled. Use the web dashboard at http://0.0.0.0:5000/ instead.'
+            )
+            self.show_display = False
 
         api_server.run_in_thread()
 
@@ -333,8 +351,11 @@ class CrowdSenseApp:
     def _cleanup(self):
         for cam in self.cameras.values():
             cam.stop()
-        if self.show_display:
-            cv2.destroyAllWindows()
+        if self.show_display and CV2_GUI:
+            try:
+                cv2.destroyAllWindows()
+            except cv2.error:
+                pass
 
         log_path = Path('logs/metrics.json')
         log_path.parent.mkdir(exist_ok=True)
