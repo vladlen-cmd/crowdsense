@@ -220,4 +220,9 @@ echo "  Alert delivery is configured in config.yaml."
 echo ""
 echo "  If camera was just enabled, reboot first:"
 echo "    sudo reboot"
+<<<<<<< HEAD
 echo "=========================================="
+=======
+echo "=========================================="
+
+>>>>>>> f637b998fa277b810573648648dbbcaa6a226851

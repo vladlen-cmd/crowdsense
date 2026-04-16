@@ -1,7 +1,11 @@
+# camera_id maps to /dev/videoN on Linux.
+# Run  python main.py --scan-cameras  to see which IDs are available on this Pi.
+# Zones with an unavailable camera_id are skipped gracefully (no crash).
+
 zones:
   cafeteria:
     max_capacity: 92
-    camera_id: 0
+    camera_id: 0          # /dev/video0
     thresholds:
       open:      0.50   # < 50%  = OPEN
       moderate:  0.75   # >= 50% = MODERATE
@@ -9,7 +13,7 @@ zones:
 
   library:
     max_capacity: 60
-    camera_id: 1
+    camera_id: 1          # change if  python main.py --scan-cameras  shows a different ID
     thresholds:
       open:      0.50
       moderate:  0.75
@@ -17,7 +21,7 @@ zones:
 
   auditorium:
     max_capacity: 100
-    camera_id: 2
+    camera_id: 2          # /dev/video2
     thresholds:
       open:      0.50
       moderate:  0.75
